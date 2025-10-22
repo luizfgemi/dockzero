@@ -37,7 +37,6 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: |
             luizfgemi/dockzero:develop
-            luizfgemi/dockzero:main-${{ github.run_number }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
