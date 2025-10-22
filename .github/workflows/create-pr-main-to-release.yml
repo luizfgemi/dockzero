@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-pr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch all branches
+        run: git fetch origin main release
+
+      - name: Compute diff count (main vs release)
+        id: diff
+        run: |
+          COUNT=$(git rev-list --right-only --count origin/release...origin/main)
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "Commits ahead of release: $COUNT"
+
+      - name: Stop if there is nothing to merge
+        if: ${{ steps.diff.outputs.count == '0' }}
+        run: |
+          echo "No new commits in main compared to release. Skipping PR."
+          exit 0
+
+      - name: Generate changelog between main and release
+        id: changelog
+        run: |
+          echo "## Changes from main to release" > body.md
+          echo "" >> body.md
+          git log origin/release..origin/main --pretty=format:"- %s (%an)" >> body.md
+          echo "" >> body.md
+          cat body.md
+
+      - name: Push sync branch (main -> release)
+        run: |
+          git checkout main
+          git reset --hard origin/main
+          git checkout -B sync-main-to-release
+          git push origin sync-main-to-release --force
+
+      - name: Create or update Pull Request (main to release)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=$(gh pr list --base release --head sync-main-to-release --state open --json number --jq '.[0].number')
+          if [ -z "$PR_NUMBER" ]; then
+            gh pr create \
+              --base release \
+              --head sync-main-to-release \
+              --title "Merge main to release" \
+              --body-file body.md \
+              --label automated \
+              --label sync
+          else
+            gh pr edit "$PR_NUMBER" \
+              --title "Merge main to release" \
+              --body-file body.md \
+              --add-label automated \
+              --add-label sync
+          fi

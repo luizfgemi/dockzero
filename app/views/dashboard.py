@@ -64,10 +64,10 @@ def render_dashboard(auto_refresh_seconds: int, title: str, messages: Mapping[st
             }}
             #toast.show {{ opacity:1; transform: translateY(0); }}
 
-            .row {{ display:flex; align-items:center; gap:12px; width:100%; flex-wrap:wrap; }}
-            .link {{ min-width: 240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }}
+            .row {{ display:flex; align-items:center; gap:12px; width:100%; flex-wrap:nowrap; }}
+            .link {{ flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }}
 
-            .mini {{ display:flex; gap:6px; }}
+            .mini {{ display:flex; gap:6px; align-items:center; flex-shrink:0; }}
           </style>
         </head>
         <body>
@@ -124,7 +124,7 @@ def render_dashboard(auto_refresh_seconds: int, title: str, messages: Mapping[st
                 <span class="mini">
                   <a class="btn emoji" href="${{logs}}" target="_blank" title="${{DASH.button_logs}}">📜</a>
                   <a class="btn emoji" href="${{term}}" target="_blank" title="${{DASH.button_terminal}}">💻</a>
-                  <a class="btn emoji" href="${{inspect}}" target="_blank" title="${{DASH.button_inspect}}">ℹ️</a>
+                  <a class="btn emoji action-inspect" href="${{inspect}}" target="_blank" title="${{DASH.button_inspect}}">ℹ️</a>
                 </span>
               `;
             }}
@@ -162,7 +162,6 @@ def render_dashboard(auto_refresh_seconds: int, title: str, messages: Mapping[st
               const mem = fmt(container.mem_mb, 0);
               const metrics = format(DASH.metrics, {{cpu, mem}});
               const encoded = encodeURIComponent(container.name);
-              const inspect = `/inspect/${{encoded}}`;
 
               return `
                 <div class="card" data-container="${{encoded}}">
@@ -178,7 +177,6 @@ def render_dashboard(auto_refresh_seconds: int, title: str, messages: Mapping[st
                     <button class="btn emoji action-restart" title="${{DASH.button_restart}}" onclick="doAction('${{container.name}}','restart')">🔄</button>
                     <button class="btn emoji action-stop" title="${{DASH.button_stop}}" ${{container.status==='running'?'':'disabled'}} onclick="doAction('${{container.name}}','stop')">⏹</button>
                     <button class="btn emoji action-start" title="${{DASH.button_start}}" ${{container.status!=='running'?'':'disabled'}} onclick="doAction('${{container.name}}','start')">▶️</button>
-                    <a class="btn emoji action-inspect" href="${{inspect}}" target="_blank" title="${{DASH.button_inspect}}">ℹ️</a>
                   </div>
                 </div>
               `;
