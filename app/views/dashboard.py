@@ -1,17 +1,22 @@
 """HTML rendering helpers for the dashboard page."""
 from __future__ import annotations
 
+import json
 from html import escape
 from textwrap import dedent
+from typing import Any, Mapping
 
 from app.views.assets import FAVICON_DATA_URI
 
 
-def render_dashboard(auto_refresh_seconds: int, title: str) -> str:
+def render_dashboard(auto_refresh_seconds: int, title: str, messages: Mapping[str, Any]) -> str:
     """Return the HTML contents for the dashboard page."""
     refresh_ms = auto_refresh_seconds * 1000
     safe_title = escape(title)
-    footer_hint = f"Auto-refresh every {auto_refresh_seconds} s"
+    dashboard_messages = messages["dashboard"]
+    footer_hint = escape(dashboard_messages["auto_refresh"].format(seconds=auto_refresh_seconds))
+    loading_text = escape(dashboard_messages["loading"])
+    messages_json = json.dumps(messages, ensure_ascii=False)
     return dedent(
         f"""
         <html>
@@ -37,9 +42,17 @@ def render_dashboard(auto_refresh_seconds: int, title: str) -> str:
             .running {{ color: var(--ok); }}
             .stopped {{ color: var(--bad); }}
             .actions {{ display:flex; gap:8px; }}
-            .btn {{ border:1px solid var(--line); background:#11161d; color:var(--fg); padding:6px 8px; border-radius:8px; cursor:pointer; font-size:13px; }}
+            .btn {{ border:1px solid var(--line); background:#11161d; color:var(--fg); padding:6px 10px; border-radius:8px; cursor:pointer; font-size:13px; display:inline-flex; align-items:center; justify-content:center; min-width:34px; }}
             .btn:hover {{ filter: brightness(1.1); }}
             .btn:disabled {{ opacity: .5; cursor: not-allowed; }}
+            .btn.emoji {{ font-size:16px; padding:4px 10px; filter: grayscale(100%); }}
+            .btn.emoji:hover {{ filter: grayscale(100%) brightness(1.2); }}
+            .btn.icon::before {{ content:""; width:16px; height:16px; background-color:var(--fg); mask-position:center; mask-repeat:no-repeat; mask-size:contain; -webkit-mask-position:center; -webkit-mask-repeat:no-repeat; -webkit-mask-size:contain; display:block; }}
+            .btn-log::before {{ mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='currentColor' d='M6 3h8l5 5v13H6z'/%3E%3Cpath fill='currentColor' d='M9 10h6v1H9zm0 4h6v1H9z'/%3E%3C/svg%3E"); }}
+            .btn-shell::before {{ mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='currentColor' d='M4 5h16v14H4z'/%3E%3Cpath fill='currentColor' d='M8.5 9.5 6.4 11.6l2.1 2.1-.7.7L5 12l2.8-2.8zm4.5 4.5h6v1h-6z'/%3E%3C/svg%3E"); }}
+            .btn-restart::before {{ mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='currentColor' d='M12 4a7 7 0 1 0 6.27 9.63l-1.3-.75A5.5 5.5 0 1 1 12 6.5v1.9l3-2.4-3-2.4z'/%3E%3C/svg%3E"); }}
+            .btn-stop::before {{ background-color: var(--bad); mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='currentColor' d='M7 7h10v10H7z'/%3E%3C/svg%3E"); }}
+            .btn-run::before {{ background-color: var(--ok); mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='currentColor' d='M8 6l10 6-10 6z'/%3E%3C/svg%3E"); }}
             .footer {{ text-align:center; margin-top:12px; font-size:12px; color:var(--muted); }}
 
             #toast {{
@@ -59,11 +72,21 @@ def render_dashboard(auto_refresh_seconds: int, title: str) -> str:
         </head>
         <body>
           <header>🧩 {safe_title}</header>
-          <div id="content" class="container">Loading containers...</div>
+          <div id="content" class="container">{loading_text}</div>
           <div class="footer">{footer_hint}</div>
           <div id="toast"></div>
 
           <script>
+            const I18N = {messages_json};
+            const DASH = I18N.dashboard;
+
+            function format(msg, vars) {{
+              return msg.replace(/\\{{(\\w+)\\}}/g, (_, key) => {{
+                if (!vars || vars[key] === undefined) return '{' + key + '}';
+                return String(vars[key]);
+              }});
+            }}
+
             function toast(msg) {{
               const t = document.getElementById('toast');
               t.textContent = msg;
@@ -81,9 +104,9 @@ def render_dashboard(auto_refresh_seconds: int, title: str) -> str:
             async function doAction(name, action) {{
               try {{
                 await api(`/action/${{encodeURIComponent(name)}}/${{action}}`, {{method:'POST'}});
-                toast(`✅ ${{name}}: ${{action}} sent`);
+                toast(format(DASH.toast_action_success, {{name, action}}));
               }} catch (e) {{
-                toast(`❌ ${{name}}: failed to ${{action}}`);
+                toast(format(DASH.toast_action_error, {{name, action}}));
               }}
             }}
 
@@ -92,57 +115,160 @@ def render_dashboard(auto_refresh_seconds: int, title: str) -> str:
             }}
 
             function linkHtmlFor(c) {{
-              if (!c.link) return '<span class="link" style="color:#888"><em>no exposed ports</em></span>';
+              if (!c.link) return `<span class="link" style="color:#888"><em>${{DASH.no_ports}}</em></span>`;
               const logs = `/logs/${{encodeURIComponent(c.name)}}`;
               const term = `/exec/${{encodeURIComponent(c.name)}}`;
+              const inspect = `/inspect/${{encodeURIComponent(c.name)}}`;
               return `
                 <a class="link" href="${{c.link}}" target="_blank">${{c.link}}</a>
                 <span class="mini">
-                  <a class="btn" href="${{logs}}" target="_blank" title="logs">📜</a>
-                  <a class="btn" href="${{term}}" target="_blank" title="terminal">💻</a>
+                  <a class="btn emoji" href="${{logs}}" target="_blank" title="${{DASH.button_logs}}">📜</a>
+                  <a class="btn emoji" href="${{term}}" target="_blank" title="${{DASH.button_terminal}}">💻</a>
+                  <a class="btn emoji" href="${{inspect}}" target="_blank" title="${{DASH.button_inspect}}">ℹ️</a>
                 </span>
               `;
             }}
 
+            function updateMetrics(metrics) {{
+              Object.keys(metrics).forEach(name => {{
+                const encoded = encodeURIComponent(name);
+                const card = document.querySelector(`.card[data-container=\"${{encoded}}\"]`);
+                if (!card) return;
+                const meta = card.querySelector('.meta');
+                if (!meta) return;
+                const entry = metrics[name] || {{}};
+                const cpu = fmt(entry.cpu, 1);
+                const mem = fmt(entry.mem_mb, 0);
+                meta.innerHTML = format(DASH.metrics, {{cpu, mem}});
+              }});
+            }}
+
+            async function fetchMetrics(names) {{
+              if (!names.length) return;
+              const query = names.map(n => `names=${{encodeURIComponent(n)}}`).join('&');
+              try {{
+                const metrics = await api(`/containers/metrics?${{query}}`);
+                updateMetrics(metrics);
+              }} catch (e) {{
+                console.warn('Failed to load metrics', e);
+              }}
+            }}
+
+            function renderCard(container) {{
+              const statusCls = container.status === 'running' ? 'running' : 'stopped';
+              const statusIcon = container.status === 'running' ? DASH.status_running : DASH.status_stopped;
+              const linkHtml = linkHtmlFor(container);
+              const cpu = fmt(container.cpu, 1);
+              const mem = fmt(container.mem_mb, 0);
+              const metrics = format(DASH.metrics, {{cpu, mem}});
+              const encoded = encodeURIComponent(container.name);
+              const inspect = `/inspect/${{encoded}}`;
+
+              return `
+                <div class="card" data-container="${{encoded}}">
+                  <div class="status ${{statusCls}}">${{statusIcon}}</div>
+                  <div class="grow">
+                    <div class="name">${{container.name}}</div>
+                    <div class="meta">${{metrics}}</div>
+                  </div>
+                  <div class="grow row">
+                    ${{linkHtml}}
+                  </div>
+                  <div class="actions">
+                    <button class="btn emoji action-restart" title="${{DASH.button_restart}}" onclick="doAction('${{container.name}}','restart')">🔄</button>
+                    <button class="btn emoji action-stop" title="${{DASH.button_stop}}" ${{container.status==='running'?'':'disabled'}} onclick="doAction('${{container.name}}','stop')">⏹</button>
+                    <button class="btn emoji action-start" title="${{DASH.button_start}}" ${{container.status!=='running'?'':'disabled'}} onclick="doAction('${{container.name}}','start')">▶️</button>
+                    <a class="btn emoji action-inspect" href="${{inspect}}" target="_blank" title="${{DASH.button_inspect}}">ℹ️</a>
+                  </div>
+                </div>
+              `;
+            }}
+
+            function applyUpdate(containers) {{
+              const div = document.getElementById('content');
+              const existingCards = new Map([...div.querySelectorAll('.card')].map(card => [decodeURIComponent(card.dataset.container || ''), card]));
+
+              containers.forEach(container => {{
+                const name = container.name;
+                const encoded = encodeURIComponent(name);
+                const inspectUrl = `/inspect/${{encoded}}`;
+                let card = existingCards.get(name);
+
+                if (!card) {{
+                  const temp = document.createElement('div');
+                  temp.innerHTML = renderCard(container);
+                  card = temp.firstElementChild;
+                  div.appendChild(card);
+                }} else {{
+                  existingCards.delete(name);
+                  const statusCls = container.status === 'running' ? 'running' : 'stopped';
+                  const statusIcon = container.status === 'running' ? DASH.status_running : DASH.status_stopped;
+                  card.querySelector('.status').innerHTML = statusIcon;
+                  card.querySelector('.status').className = `status ${{statusCls}}`;
+                  const nameEl = card.querySelector('.name');
+                  if (nameEl) nameEl.textContent = name;
+
+                  const linkWrap = card.querySelector('.grow.row');
+                  if (linkWrap) linkWrap.innerHTML = linkHtmlFor(container);
+
+                  const meta = card.querySelector('.meta');
+                  if (meta && (container.cpu != null || container.mem_mb != null)) {{
+                    const cpu = fmt(container.cpu, 1);
+                    const mem = fmt(container.mem_mb, 0);
+                    meta.innerHTML = format(DASH.metrics, {{cpu, mem}});
+                  }}
+
+                  const restartBtn = card.querySelector('.action-restart');
+                  const stopBtn = card.querySelector('.action-stop');
+                  const startBtn = card.querySelector('.action-start');
+                  const inspectLink = card.querySelector('.action-inspect');
+
+                  if (restartBtn) restartBtn.setAttribute('onclick', `doAction('${{name}}','restart')`);
+                  if (stopBtn) {{
+                    stopBtn.toggleAttribute('disabled', container.status !== 'running');
+                    stopBtn.setAttribute('onclick', `doAction('${{name}}','stop')`);
+                  }}
+                  if (startBtn) {{
+                    startBtn.toggleAttribute('disabled', container.status === 'running');
+                    startBtn.setAttribute('onclick', `doAction('${{name}}','start')`);
+                  }}
+                  if (inspectLink) {{
+                    inspectLink.href = inspectUrl;
+                    inspectLink.title = DASH.button_inspect;
+                  }}
+                }}
+              }});
+
+              existingCards.forEach(card => {{
+                card.remove();
+              }});
+            }}
+
             async function loadContainers() {{
               try {{
-                const data = await api('/containers');
+                const data = await api('/containers?include_metrics=0');
                 const div = document.getElementById('content');
                 if (!data.length) {{
-                  div.innerHTML = '<p style="text-align:center;">No containers.</p>';
+                  div.innerHTML = `<p style="text-align:center;">${{DASH.no_containers}}</p>`;
                   return;
                 }}
-                div.innerHTML = data.map(c => {{
-                  const statusCls = c.status === 'running' ? 'running' : 'stopped';
-                  const linkHtml = linkHtmlFor(c);
-                  const cpu = fmt(c.cpu, 1);
-                  const mem = fmt(c.mem_mb, 0);
-
-                  return `
-                    <div class="card">
-                      <div class="status ${{statusCls}}">${{c.status === 'running' ? '🟢' : '🔴'}}</div>
-                      <div class="grow">
-                        <div class="name">${{c.name}}</div>
-                        <div class="meta">CPU: ${{cpu}}% &nbsp;|&nbsp; Mem: ${{mem}} MB</div>
-                      </div>
-                      <div class="grow row">
-                        ${{linkHtml}}
-                      </div>
-                      <div class="actions">
-                        <button class="btn" title="restart" onclick="doAction('${{c.name}}','restart')">🔄</button>
-                        <button class="btn" title="stop" ${{c.status==='running'?'':'disabled'}} onclick="doAction('${{c.name}}','stop')">⏹</button>
-                        <button class="btn" title="start" ${{c.status!=='running'?'':'disabled'}} onclick="doAction('${{c.name}}','start')">▶️</button>
-                      </div>
-                    </div>
-                  `;
-                }}).join('');
+                if (!div.dataset.initialized) {{
+                  div.innerHTML = data.map(renderCard).join('');
+                  div.dataset.initialized = '1';
+                }} else {{
+                  applyUpdate(data);
+                }}
+                const names = data.map(c => c.name);
+                fetchMetrics(names);
               }} catch (e) {{
-                toast('Error loading containers');
+                toast(DASH.toast_load_error);
               }}
             }}
 
             loadContainers();
-            setInterval(loadContainers, {refresh_ms});
+            setInterval(() => {{
+              loadContainers().catch(() => {{ /* handled in loadContainers */ }});
+            }}, {refresh_ms});
           </script>
         </body>
         </html>

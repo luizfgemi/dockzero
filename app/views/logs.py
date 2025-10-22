@@ -1,18 +1,36 @@
 """HTML rendering helpers for the logs pages."""
 from __future__ import annotations
 
+import json
 from html import escape
 from textwrap import dedent
+from typing import Any, Mapping
 
 from app.views.assets import FAVICON_DATA_URI
 
 
-def render_logs_page(name: str, tail: int, refresh_seconds: int, max_tail: int, title: str) -> str:
+def render_logs_page(
+    name: str,
+    tail: int,
+    refresh_seconds: int,
+    max_tail: int,
+    title: str,
+    messages: Mapping[str, Any],
+) -> str:
     """Return the HTML page used to display container logs."""
     refresh_ms = refresh_seconds * 1000
-    refresh_label = f"auto-refresh {refresh_seconds}s"
     safe_title = escape(title)
     safe_name = escape(name)
+    logs_messages = messages["logs"]
+    common_messages = messages["common"]
+    refresh_label = escape(logs_messages["refresh_hint"].format(seconds=refresh_seconds))
+    tail_label = escape(logs_messages["tail_label"])
+    apply_button = escape(logs_messages["apply_button"])
+    loading_text = escape(logs_messages["loading"])
+    back_text = escape(common_messages["back_to_dashboard"])
+    copied_text = escape(common_messages["copied"])
+    toast_tail_applied = json.dumps(logs_messages["toast_tail_applied"])
+    toast_default = json.dumps(common_messages["copied"])
     return dedent(
         f"""
         <html>
@@ -43,21 +61,24 @@ def render_logs_page(name: str, tail: int, refresh_seconds: int, max_tail: int, 
               <strong>🧩 {safe_title} · Logs: {safe_name}</strong>
               <span class="muted">{refresh_label}</span>
               <form id="tailForm" onsubmit="return false" class="bar">
-                <label>tail</label>
+                <label>{tail_label}</label>
                 <input id="tail" type="number" min="1" max="{max_tail}" value="{tail}"/>
-                <button onclick="applyTail()">apply</button>
+                <button onclick="applyTail()">{apply_button}</button>
               </form>
-              <a href="/" target="_blank">back to dashboard</a>
+              <a href="/" target="_blank">{back_text}</a>
             </div>
           </header>
-          <pre id="logbox">loading...</pre>
-          <div id="toast">Copied!</div>
+          <pre id="logbox">{loading_text}</pre>
+          <div id="toast">{copied_text}</div>
 
           <script>
             const name_ = {name!r};
+            const TOAST_TAIL_APPLIED = {toast_tail_applied};
+            const TOAST_DEFAULT = {toast_default};
+
             function toast(msg) {{
               const t = document.getElementById('toast');
-              t.textContent = msg || 'OK';
+              t.textContent = msg || TOAST_DEFAULT;
               t.classList.add('show');
               clearTimeout(window.__toastTimer);
               window.__toastTimer = setTimeout(()=> t.classList.remove('show'), 1500);
@@ -75,7 +96,7 @@ def render_logs_page(name: str, tail: int, refresh_seconds: int, max_tail: int, 
 
             function applyTail() {{
               loadLogs();
-              toast('Tail applied');
+              toast(TOAST_TAIL_APPLIED);
             }}
 
             loadLogs();

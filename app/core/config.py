@@ -6,8 +6,17 @@ import os
 APP_TITLE: str = os.getenv("APP_TITLE", "Docker Dashboard")
 """Display title used across the web UI."""
 
+APP_LOCALE: str = os.getenv("APP_LOCALE", "en").lower()
+"""Locale used to select translated UI messages."""
+
 WSL_DISTRO: str = os.getenv("WSL_DISTRO", "Ubuntu")
 """Default WSL distribution used to build exec commands."""
+
+EXEC_SHELL: str = os.getenv("EXEC_SHELL", "bash")
+"""Shell used when opening a container exec session from host-based profiles."""
+
+EXEC_COMMAND_PROFILES: str = os.getenv("EXEC_COMMAND_PROFILES", "all")
+"""Comma separated list indicating which exec command profiles to expose."""
 
 
 def _get_int_env(name: str, default: int, *, minimum: int | None = None, maximum: int | None = None) -> int:
@@ -64,11 +73,9 @@ LOG_DEFAULT_TAIL: int = min(_LOG_DEFAULT_TAIL, LOG_MAX_TAIL)
 ACTION_DELAY_SECONDS: float = _get_float_env("ACTION_DELAY_SECONDS", 0.1, minimum=0.0)
 """Sleep duration after container actions to let Docker settle."""
 
-EXEC_SHELL: str = os.getenv("EXEC_SHELL", "bash")
-"""Shell used when building docker exec helper commands."""
-
 __all__ = [
     "APP_TITLE",
+    "APP_LOCALE",
     "WSL_DISTRO",
     "LINK_SCHEME",
     "LINK_HOST",
@@ -78,4 +85,5 @@ __all__ = [
     "LOG_DEFAULT_TAIL",
     "ACTION_DELAY_SECONDS",
     "EXEC_SHELL",
+    "EXEC_COMMAND_PROFILES",
 ]
