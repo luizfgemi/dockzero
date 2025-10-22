@@ -6,6 +6,9 @@ import os
 APP_TITLE: str = os.getenv("APP_TITLE", "Docker Dashboard")
 """Display title used across the web UI."""
 
+APP_LOCALE: str = os.getenv("APP_LOCALE", "en").lower()
+"""Locale used to select translated UI messages."""
+
 WSL_DISTRO: str = os.getenv("WSL_DISTRO", "Ubuntu")
 """Default WSL distribution used to build exec commands."""
 
@@ -69,6 +72,7 @@ EXEC_SHELL: str = os.getenv("EXEC_SHELL", "bash")
 
 __all__ = [
     "APP_TITLE",
+    "APP_LOCALE",
     "WSL_DISTRO",
     "LINK_SCHEME",
     "LINK_HOST",

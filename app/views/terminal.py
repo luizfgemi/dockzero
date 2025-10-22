@@ -1,16 +1,25 @@
 """HTML rendering helpers for the exec/terminal page."""
 from __future__ import annotations
 
+import json
 from html import escape
 from textwrap import dedent
+from typing import Any, Mapping
 
 from app.views.assets import FAVICON_DATA_URI
 
 
-def render_terminal_page(name: str, command: str, title: str) -> str:
+def render_terminal_page(name: str, command: str, title: str, messages: Mapping[str, Any]) -> str:
     """Return the HTML contents that show the exec command."""
     safe_title = escape(title)
     safe_name = escape(name)
+    terminal_messages = messages["terminal"]
+    common_messages = messages["common"]
+    instructions = escape(terminal_messages["instructions"])
+    copy_button = escape(terminal_messages["copy_button"])
+    back_text = escape(common_messages["back_to_dashboard"])
+    copied_text = escape(common_messages["copied"])
+    toast_message = json.dumps(common_messages["copied"])
     return dedent(
         f"""
         <html>
@@ -33,16 +42,19 @@ def render_terminal_page(name: str, command: str, title: str) -> str:
         </head>
         <body>
           <h3>💻 {safe_title} · Exec · {safe_name}</h3>
-          <p>Copy and paste this command into PowerShell/Windows Terminal:</p>
+          <p>{instructions}</p>
           <pre id="cmd">{command}</pre>
-          <button onclick="copyCmd()">📋 Copy command</button>
-          &nbsp;&nbsp; <a href="/" target="_blank">back to dashboard</a>
-          <div id="toast">Copied!</div>
+          <button onclick="copyCmd()">{copy_button}</button>
+          &nbsp;&nbsp; <a href="/" target="_blank">{back_text}</a>
+          <div id="toast">{copied_text}</div>
           <script>
+            const TOAST_MSG = {toast_message};
+
             function copyCmd() {{
               const text = document.getElementById('cmd').textContent;
               navigator.clipboard.writeText(text);
               const toast = document.getElementById('toast');
+              toast.textContent = TOAST_MSG;
               toast.classList.add('show');
               setTimeout(()=>toast.classList.remove('show'),1500);
             }}

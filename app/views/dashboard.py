@@ -1,17 +1,22 @@
 """HTML rendering helpers for the dashboard page."""
 from __future__ import annotations
 
+import json
 from html import escape
 from textwrap import dedent
+from typing import Any, Mapping
 
 from app.views.assets import FAVICON_DATA_URI
 
 
-def render_dashboard(auto_refresh_seconds: int, title: str) -> str:
+def render_dashboard(auto_refresh_seconds: int, title: str, messages: Mapping[str, Any]) -> str:
     """Return the HTML contents for the dashboard page."""
     refresh_ms = auto_refresh_seconds * 1000
     safe_title = escape(title)
-    footer_hint = f"Auto-refresh every {auto_refresh_seconds} s"
+    dashboard_messages = messages["dashboard"]
+    footer_hint = escape(dashboard_messages["auto_refresh"].format(seconds=auto_refresh_seconds))
+    loading_text = escape(dashboard_messages["loading"])
+    messages_json = json.dumps(messages, ensure_ascii=False)
     return dedent(
         f"""
         <html>
@@ -59,11 +64,21 @@ def render_dashboard(auto_refresh_seconds: int, title: str) -> str:
         </head>
         <body>
           <header>🧩 {safe_title}</header>
-          <div id="content" class="container">Loading containers...</div>
+          <div id="content" class="container">{loading_text}</div>
           <div class="footer">{footer_hint}</div>
           <div id="toast"></div>
 
           <script>
+            const I18N = {messages_json};
+            const DASH = I18N.dashboard;
+
+            function format(msg, vars) {{
+              return msg.replace(/\\{{(\\w+)\\}}/g, (_, key) => {{
+                if (!vars || vars[key] === undefined) return '{' + key + '}';
+                return String(vars[key]);
+              }});
+            }}
+
             function toast(msg) {{
               const t = document.getElementById('toast');
               t.textContent = msg;
@@ -81,9 +96,9 @@ def render_dashboard(auto_refresh_seconds: int, title: str) -> str:
             async function doAction(name, action) {{
               try {{
                 await api(`/action/${{encodeURIComponent(name)}}/${{action}}`, {{method:'POST'}});
-                toast(`✅ ${{name}}: ${{action}} sent`);
+                toast(format(DASH.toast_action_success, {{name, action}}));
               }} catch (e) {{
-                toast(`❌ ${{name}}: failed to ${{action}}`);
+                toast(format(DASH.toast_action_error, {{name, action}}));
               }}
             }}
 
@@ -92,14 +107,14 @@ def render_dashboard(auto_refresh_seconds: int, title: str) -> str:
             }}
 
             function linkHtmlFor(c) {{
-              if (!c.link) return '<span class="link" style="color:#888"><em>no exposed ports</em></span>';
+              if (!c.link) return `<span class="link" style="color:#888"><em>${{DASH.no_ports}}</em></span>`;
               const logs = `/logs/${{encodeURIComponent(c.name)}}`;
               const term = `/exec/${{encodeURIComponent(c.name)}}`;
               return `
                 <a class="link" href="${{c.link}}" target="_blank">${{c.link}}</a>
                 <span class="mini">
-                  <a class="btn" href="${{logs}}" target="_blank" title="logs">📜</a>
-                  <a class="btn" href="${{term}}" target="_blank" title="terminal">💻</a>
+                  <a class="btn" href="${{logs}}" target="_blank" title="${{DASH.button_logs}}">📜</a>
+                  <a class="btn" href="${{term}}" target="_blank" title="${{DASH.button_terminal}}">💻</a>
                 </span>
               `;
             }}
@@ -109,35 +124,37 @@ def render_dashboard(auto_refresh_seconds: int, title: str) -> str:
                 const data = await api('/containers');
                 const div = document.getElementById('content');
                 if (!data.length) {{
-                  div.innerHTML = '<p style="text-align:center;">No containers.</p>';
+                  div.innerHTML = `<p style="text-align:center;">${{DASH.no_containers}}</p>`;
                   return;
                 }}
                 div.innerHTML = data.map(c => {{
                   const statusCls = c.status === 'running' ? 'running' : 'stopped';
+                  const statusIcon = c.status === 'running' ? DASH.status_running : DASH.status_stopped;
                   const linkHtml = linkHtmlFor(c);
                   const cpu = fmt(c.cpu, 1);
                   const mem = fmt(c.mem_mb, 0);
+                  const metrics = format(DASH.metrics, {{cpu, mem}});
 
                   return `
                     <div class="card">
-                      <div class="status ${{statusCls}}">${{c.status === 'running' ? '🟢' : '🔴'}}</div>
+                      <div class="status ${{statusCls}}">${{statusIcon}}</div>
                       <div class="grow">
                         <div class="name">${{c.name}}</div>
-                        <div class="meta">CPU: ${{cpu}}% &nbsp;|&nbsp; Mem: ${{mem}} MB</div>
+                        <div class="meta">${{metrics}}</div>
                       </div>
                       <div class="grow row">
                         ${{linkHtml}}
                       </div>
                       <div class="actions">
-                        <button class="btn" title="restart" onclick="doAction('${{c.name}}','restart')">🔄</button>
-                        <button class="btn" title="stop" ${{c.status==='running'?'':'disabled'}} onclick="doAction('${{c.name}}','stop')">⏹</button>
-                        <button class="btn" title="start" ${{c.status!=='running'?'':'disabled'}} onclick="doAction('${{c.name}}','start')">▶️</button>
+                        <button class="btn" title="${{DASH.button_restart}}" onclick="doAction('${{c.name}}','restart')">🔄</button>
+                        <button class="btn" title="${{DASH.button_stop}}" ${{c.status==='running'?'':'disabled'}} onclick="doAction('${{c.name}}','stop')">⏹</button>
+                        <button class="btn" title="${{DASH.button_start}}" ${{c.status!=='running'?'':'disabled'}} onclick="doAction('${{c.name}}','start')">▶️</button>
                       </div>
                     </div>
                   `;
                 }}).join('');
               }} catch (e) {{
-                toast('Error loading containers');
+                toast(DASH.toast_load_error);
               }}
             }}
 
