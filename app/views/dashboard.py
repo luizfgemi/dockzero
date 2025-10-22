@@ -42,9 +42,17 @@ def render_dashboard(auto_refresh_seconds: int, title: str, messages: Mapping[st
             .running {{ color: var(--ok); }}
             .stopped {{ color: var(--bad); }}
             .actions {{ display:flex; gap:8px; }}
-            .btn {{ border:1px solid var(--line); background:#11161d; color:var(--fg); padding:6px 8px; border-radius:8px; cursor:pointer; font-size:13px; }}
+            .btn {{ border:1px solid var(--line); background:#11161d; color:var(--fg); padding:6px 10px; border-radius:8px; cursor:pointer; font-size:13px; display:inline-flex; align-items:center; justify-content:center; min-width:34px; }}
             .btn:hover {{ filter: brightness(1.1); }}
             .btn:disabled {{ opacity: .5; cursor: not-allowed; }}
+            .btn.emoji {{ font-size:16px; padding:4px 10px; filter: grayscale(100%); }}
+            .btn.emoji:hover {{ filter: grayscale(100%) brightness(1.2); }}
+            .btn.icon::before {{ content:""; width:16px; height:16px; background-color:var(--fg); mask-position:center; mask-repeat:no-repeat; mask-size:contain; -webkit-mask-position:center; -webkit-mask-repeat:no-repeat; -webkit-mask-size:contain; display:block; }}
+            .btn-log::before {{ mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='currentColor' d='M6 3h8l5 5v13H6z'/%3E%3Cpath fill='currentColor' d='M9 10h6v1H9zm0 4h6v1H9z'/%3E%3C/svg%3E"); }}
+            .btn-shell::before {{ mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='currentColor' d='M4 5h16v14H4z'/%3E%3Cpath fill='currentColor' d='M8.5 9.5 6.4 11.6l2.1 2.1-.7.7L5 12l2.8-2.8zm4.5 4.5h6v1h-6z'/%3E%3C/svg%3E"); }}
+            .btn-restart::before {{ mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='currentColor' d='M12 4a7 7 0 1 0 6.27 9.63l-1.3-.75A5.5 5.5 0 1 1 12 6.5v1.9l3-2.4-3-2.4z'/%3E%3C/svg%3E"); }}
+            .btn-stop::before {{ background-color: var(--bad); mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='currentColor' d='M7 7h10v10H7z'/%3E%3C/svg%3E"); }}
+            .btn-run::before {{ background-color: var(--ok); mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='currentColor' d='M8 6l10 6-10 6z'/%3E%3C/svg%3E"); }}
             .footer {{ text-align:center; margin-top:12px; font-size:12px; color:var(--muted); }}
 
             #toast {{
@@ -110,11 +118,13 @@ def render_dashboard(auto_refresh_seconds: int, title: str, messages: Mapping[st
               if (!c.link) return `<span class="link" style="color:#888"><em>${{DASH.no_ports}}</em></span>`;
               const logs = `/logs/${{encodeURIComponent(c.name)}}`;
               const term = `/exec/${{encodeURIComponent(c.name)}}`;
+              const inspect = `/inspect/${{encodeURIComponent(c.name)}}`;
               return `
                 <a class="link" href="${{c.link}}" target="_blank">${{c.link}}</a>
                 <span class="mini">
-                  <a class="btn" href="${{logs}}" target="_blank" title="${{DASH.button_logs}}">📜</a>
-                  <a class="btn" href="${{term}}" target="_blank" title="${{DASH.button_terminal}}">💻</a>
+                  <a class="btn emoji" href="${{logs}}" target="_blank" title="${{DASH.button_logs}}">📜</a>
+                  <a class="btn emoji" href="${{term}}" target="_blank" title="${{DASH.button_terminal}}">💻</a>
+                  <a class="btn emoji" href="${{inspect}}" target="_blank" title="${{DASH.button_inspect}}">ℹ️</a>
                 </span>
               `;
             }}
@@ -152,6 +162,7 @@ def render_dashboard(auto_refresh_seconds: int, title: str, messages: Mapping[st
               const mem = fmt(container.mem_mb, 0);
               const metrics = format(DASH.metrics, {{cpu, mem}});
               const encoded = encodeURIComponent(container.name);
+              const inspect = `/inspect/${{encoded}}`;
 
               return `
                 <div class="card" data-container="${{encoded}}">
@@ -164,9 +175,10 @@ def render_dashboard(auto_refresh_seconds: int, title: str, messages: Mapping[st
                     ${{linkHtml}}
                   </div>
                   <div class="actions">
-                    <button class="btn" title="${{DASH.button_restart}}" onclick="doAction('${{container.name}}','restart')">🔄</button>
-                    <button class="btn" title="${{DASH.button_stop}}" ${{container.status==='running'?'':'disabled'}} onclick="doAction('${{container.name}}','stop')">⏹</button>
-                    <button class="btn" title="${{DASH.button_start}}" ${{container.status!=='running'?'':'disabled'}} onclick="doAction('${{container.name}}','start')">▶️</button>
+                    <button class="btn emoji action-restart" title="${{DASH.button_restart}}" onclick="doAction('${{container.name}}','restart')">🔄</button>
+                    <button class="btn emoji action-stop" title="${{DASH.button_stop}}" ${{container.status==='running'?'':'disabled'}} onclick="doAction('${{container.name}}','stop')">⏹</button>
+                    <button class="btn emoji action-start" title="${{DASH.button_start}}" ${{container.status!=='running'?'':'disabled'}} onclick="doAction('${{container.name}}','start')">▶️</button>
+                    <a class="btn emoji action-inspect" href="${{inspect}}" target="_blank" title="${{DASH.button_inspect}}">ℹ️</a>
                   </div>
                 </div>
               `;
@@ -179,6 +191,7 @@ def render_dashboard(auto_refresh_seconds: int, title: str, messages: Mapping[st
               containers.forEach(container => {{
                 const name = container.name;
                 const encoded = encodeURIComponent(name);
+                const inspectUrl = `/inspect/${{encoded}}`;
                 let card = existingCards.get(name);
 
                 if (!card) {{
@@ -205,7 +218,11 @@ def render_dashboard(auto_refresh_seconds: int, title: str, messages: Mapping[st
                     meta.innerHTML = format(DASH.metrics, {{cpu, mem}});
                   }}
 
-                  const [restartBtn, stopBtn, startBtn] = card.querySelectorAll('.actions .btn');
+                  const restartBtn = card.querySelector('.action-restart');
+                  const stopBtn = card.querySelector('.action-stop');
+                  const startBtn = card.querySelector('.action-start');
+                  const inspectLink = card.querySelector('.action-inspect');
+
                   if (restartBtn) restartBtn.setAttribute('onclick', `doAction('${{name}}','restart')`);
                   if (stopBtn) {{
                     stopBtn.toggleAttribute('disabled', container.status !== 'running');
@@ -214,6 +231,10 @@ def render_dashboard(auto_refresh_seconds: int, title: str, messages: Mapping[st
                   if (startBtn) {{
                     startBtn.toggleAttribute('disabled', container.status === 'running');
                     startBtn.setAttribute('onclick', `doAction('${{name}}','start')`);
+                  }}
+                  if (inspectLink) {{
+                    inspectLink.href = inspectUrl;
+                    inspectLink.title = DASH.button_inspect;
                   }}
                 }}
               }});

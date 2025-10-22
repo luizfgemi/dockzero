@@ -11,11 +11,12 @@ dashboard:
   status_stopped: '🔴'
   button_logs: 'logs'
   button_terminal: 'terminal'
+  button_inspect: 'detalhes'
   button_restart: 'reiniciar'
   button_stop: 'parar'
   button_start: 'iniciar'
-  toast_action_success: '✅ {name}: comando {action} enviado'
-  toast_action_error: '❌ {name}: falha ao executar {action}'
+  toast_action_success: '{name}: comando {action} enviado'
+  toast_action_error: '{name}: falha ao executar {action}'
   toast_load_error: 'Erro ao carregar contêineres'
 logs:
   refresh_hint: 'atualização automática {seconds}s'
@@ -26,3 +27,7 @@ logs:
 terminal:
   instructions: Escolha o comando adequado ao seu ambiente e execute localmente.
   copy_button: 'Copiar comando'
+inspect:
+  auto_refresh: 'Atualização automática a cada {seconds} s'
+  inspect_heading: 'Dados de inspect'
+  stats_heading: 'Instantâneo de estatísticas'

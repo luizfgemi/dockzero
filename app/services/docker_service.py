@@ -253,6 +253,20 @@ def get_containers_metrics(client: DockerClient, names: list[str] | None = None)
     return metrics
 
 
+def get_container_inspect(client: DockerClient, name: str) -> dict[str, Any]:
+    """Return detailed inspect data (including stats) for a container."""
+    container = client.containers.get(name)
+    stats = None
+    try:
+        stats = container.stats(stream=False)
+    except Exception:
+        stats = None
+    return {
+        "inspect": container.attrs,
+        "stats": stats,
+    }
+
+
 def perform_container_action(client: DockerClient, name: str, action: str) -> None:
     """Execute an action (start/stop/restart) on a container."""
     if action not in VALID_ACTIONS:
