@@ -21,7 +21,7 @@ docker run -d \
 luizfgemi/dockzero:latest
 ```
 
-or with Docker Compose:
+## Docker Compose:
 ```yaml
 services:
   dockzero:
