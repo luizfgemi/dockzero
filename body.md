@@ -1,5 +1,6 @@
 ## Changes from main to release
 
+- Update dashboard rendering: adjust CSS for layout and add inspect link for containers (Luiz Fernando Gemi)
 - Update workflow to include permissions and improve changelog generation; remove inspect link from dashboard rendering (Luiz Fernando Gemi)
 - Fix fetch command and update pull request naming in workflow (Luiz Fernando Gemi)
 - Rename workflow from "Create PR from main → release (manual)" to "Release" (Luiz Fernando Gemi)
