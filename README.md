@@ -19,10 +19,12 @@ docker run -d \
   luizfgemi/dockzero
 ```
 
-or with Docker Compose:
+or with Docker Compose (from the repository root):
 
 ```bash
-docker-compose up
+docker compose up --build
+# or, for the legacy Docker Compose binary:
+# docker-compose up --build
 ```
 
 The interface will be available at `http://localhost:7070`.
