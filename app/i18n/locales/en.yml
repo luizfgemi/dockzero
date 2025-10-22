@@ -24,6 +24,5 @@ logs:
   loading: 'loading...'
   toast_tail_applied: 'Tail applied'
 terminal:
-  instructions: >
-    Copy and paste this command into PowerShell/Windows Terminal:
+  instructions: Choose the command that matches your environment and run it locally.
   copy_button: 'Copy command'

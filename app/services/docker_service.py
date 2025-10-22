@@ -10,12 +10,73 @@ from docker import DockerClient
 from docker.errors import NotFound
 from docker.models.containers import Container
 
-from app.core.config import ACTION_DELAY_SECONDS, EXEC_SHELL, LINK_HOST, LINK_SCHEME, LOG_MAX_TAIL
+from app.core.config import (
+    ACTION_DELAY_SECONDS,
+    EXEC_COMMAND_PROFILES,
+    EXEC_SHELL,
+    LINK_HOST,
+    LINK_SCHEME,
+    LOG_MAX_TAIL,
+    WSL_DISTRO,
+)
 
 VALID_ACTIONS = {"start", "stop", "restart"}
 _STATS_CACHE_TTL_SECONDS = 2.0
 _STATS_CACHE: dict[str, tuple[float, dict[str, Any] | None]] = {}
 _STATS_CACHE_LOCK = Lock()
+_EXEC_TEMPLATE_CACHE: list[dict[str, str]] | None = None
+
+_EXEC_PROFILE_TEMPLATES: dict[str, dict[str, str]] = {
+    "win-wsl": {
+        "label": "Windows (WSL)",
+        "command": "wsl -d {wsl_distro} docker exec -it {name} {shell}",
+    },
+    "win-desktop": {
+        "label": "Windows (PowerShell)",
+        "command": "powershell -NoLogo -NoProfile -Command \"docker exec -it {name} {shell}\"",
+    },
+    "linux": {
+        "label": "Linux shell",
+        "command": "docker exec -it {name} {shell}",
+    },
+    "mac": {
+        "label": "macOS Terminal",
+        "command": "docker exec -it {name} {shell}",
+    },
+}
+
+
+def _resolve_exec_templates() -> list[dict[str, str]]:
+    """Return the configured exec templates, cached after first load."""
+    global _EXEC_TEMPLATE_CACHE
+    if _EXEC_TEMPLATE_CACHE is not None:
+        return _EXEC_TEMPLATE_CACHE
+
+    templates: list[dict[str, str]] = []
+    added: set[str] = set()
+
+    raw_profiles = [p.strip().lower() for p in EXEC_COMMAND_PROFILES.split(",") if p.strip()]
+    if not raw_profiles:
+        raw_profiles = ["all"]
+
+    def add_profile(key: str) -> None:
+        if key in _EXEC_PROFILE_TEMPLATES and key not in added:
+            templates.append(_EXEC_PROFILE_TEMPLATES[key].copy())
+            added.add(key)
+
+    for profile in raw_profiles:
+        if profile == "all":
+            for key in ("win-wsl", "win-desktop", "mac", "linux"):
+                add_profile(key)
+        else:
+            add_profile(profile)
+
+    if not templates:
+        add_profile("win-wsl")
+        add_profile("linux")
+
+    _EXEC_TEMPLATE_CACHE = templates
+    return templates
 
 
 def first_mapped_port_from_summary(port_mappings: list[dict[str, Any]] | None) -> str | None:
@@ -224,6 +285,33 @@ def get_container_logs(client: DockerClient, name: str, tail: int) -> str:
     return logs.decode("utf-8", errors="ignore")
 
 
-def build_exec_command(name: str, distro: str) -> str:
-    """Build the Windows Terminal command for opening a shell in the container."""
-    return f"wsl -d {distro} docker exec -it {name} {EXEC_SHELL}"
+def build_exec_commands(name: str) -> list[dict[str, str]]:
+    """Return the list of exec commands available for a container."""
+    templates = _resolve_exec_templates()
+    context = {
+        "name": name,
+        "shell": EXEC_SHELL,
+        "wsl_distro": WSL_DISTRO,
+    }
+
+    commands: list[dict[str, str]] = []
+    for template in templates:
+        label = template.get("label", "").strip()
+        command_tpl = template.get("command", "").strip()
+        if not label or not command_tpl:
+            continue
+        try:
+            command = command_tpl.format(**context)
+        except KeyError:
+            continue
+        commands.append({"label": label, "command": command})
+
+    if not commands:
+        commands.append(
+            {
+                "label": "Windows (WSL)",
+                "command": f"wsl -d {WSL_DISTRO} docker exec -it {name} {EXEC_SHELL}",
+            }
+        )
+
+    return commands
