@@ -8,6 +8,8 @@ from docker import DockerClient
 from docker.errors import NotFound
 from docker.models.containers import Container
 
+from app.core.config import ACTION_DELAY_SECONDS, EXEC_SHELL, LINK_HOST, LINK_SCHEME, LOG_MAX_TAIL
+
 VALID_ACTIONS = {"start", "stop", "restart"}
 
 
@@ -61,7 +63,7 @@ def list_container_summaries(client: DockerClient) -> list[dict[str, Any]]:
     containers = client.containers.list(all=True)
     for container in containers:
         host_port = first_mapped_port(container)
-        link = f"http://localhost:{host_port}" if host_port else None
+        link = f"{LINK_SCHEME}://{LINK_HOST}:{host_port}" if host_port else None
 
         cpu = None
         mem = None
@@ -89,7 +91,7 @@ def list_container_summaries(client: DockerClient) -> list[dict[str, Any]]:
 def perform_container_action(client: DockerClient, name: str, action: str) -> None:
     """Execute an action (start/stop/restart) on a container."""
     if action not in VALID_ACTIONS:
-        raise ValueError("operação inválida")
+        raise ValueError("invalid operation")
 
     try:
         container = client.containers.get(name)
@@ -103,19 +105,21 @@ def perform_container_action(client: DockerClient, name: str, action: str) -> No
     elif action == "start":
         container.start()
 
-    time.sleep(0.1)
+    if ACTION_DELAY_SECONDS > 0:
+        time.sleep(ACTION_DELAY_SECONDS)
 
 
 def get_container_logs(client: DockerClient, name: str, tail: int) -> str:
     """Return the textual logs for a container."""
+    tail = max(1, min(tail, LOG_MAX_TAIL))
     container = client.containers.get(name)
     try:
         logs = container.logs(tail=tail)
     except Exception as exc:
-        return f"[erro] {exc}"
+        return f"[error] {exc}"
     return logs.decode("utf-8", errors="ignore")
 
 
 def build_exec_command(name: str, distro: str) -> str:
     """Build the Windows Terminal command for opening a shell in the container."""
-    return f"wsl -d {distro} docker exec -it {name} bash"
+    return f"wsl -d {distro} docker exec -it {name} {EXEC_SHELL}"

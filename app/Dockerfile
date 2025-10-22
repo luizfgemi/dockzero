@@ -3,7 +3,7 @@ FROM python:3.12-slim AS base
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-# instala dependências mínimas
+# install minimal dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc curl && \
     pip install --no-cache-dir --upgrade pip && \
@@ -11,10 +11,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     apt-get purge -y gcc && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
 
 # ---------- app ----------
-WORKDIR /app
-COPY main.py .
+WORKDIR /code
+COPY . /code/app
+ENV PYTHONPATH=/code
 
+WORKDIR /code/app
 EXPOSE 7070
 
 # ---------- runtime ----------
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7070"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7070"]

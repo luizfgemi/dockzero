@@ -1,17 +1,23 @@
 """HTML rendering helpers for the exec/terminal page."""
 from __future__ import annotations
 
+from html import escape
 from textwrap import dedent
 
+from app.views.assets import FAVICON_DATA_URI
 
-def render_terminal_page(name: str, command: str) -> str:
+
+def render_terminal_page(name: str, command: str, title: str) -> str:
     """Return the HTML contents that show the exec command."""
+    safe_title = escape(title)
+    safe_name = escape(name)
     return dedent(
         f"""
         <html>
         <head>
           <meta charset="utf-8"/>
-          <title>Terminal - {name}</title>
+          <title>{safe_title} · Exec · {safe_name}</title>
+          <link rel="icon" href="{FAVICON_DATA_URI}">
           <style>
             body {{ background:#0d1117; color:#c9d1d9; font-family: monospace; padding:24px; }}
             pre {{ background:#0f1420; padding:12px; border:1px solid #333; border-radius:8px; }}
@@ -26,12 +32,12 @@ def render_terminal_page(name: str, command: str) -> str:
           </style>
         </head>
         <body>
-          <h3>💻 Abrir container no Windows Terminal</h3>
-          <p>Copie e cole este comando no PowerShell/Windows Terminal:</p>
+          <h3>💻 {safe_title} · Exec · {safe_name}</h3>
+          <p>Copy and paste this command into PowerShell/Windows Terminal:</p>
           <pre id="cmd">{command}</pre>
-          <button onclick="copyCmd()">📋 Copiar comando</button>
-          &nbsp;&nbsp; <a href="/" target="_blank">voltar ao dashboard</a>
-          <div id="toast">Copiado!</div>
+          <button onclick="copyCmd()">📋 Copy command</button>
+          &nbsp;&nbsp; <a href="/" target="_blank">back to dashboard</a>
+          <div id="toast">Copied!</div>
           <script>
             function copyCmd() {{
               const text = document.getElementById('cmd').textContent;

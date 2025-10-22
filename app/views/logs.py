@@ -1,17 +1,25 @@
 """HTML rendering helpers for the logs pages."""
 from __future__ import annotations
 
+from html import escape
 from textwrap import dedent
 
+from app.views.assets import FAVICON_DATA_URI
 
-def render_logs_page(name: str, tail: int) -> str:
+
+def render_logs_page(name: str, tail: int, refresh_seconds: int, max_tail: int, title: str) -> str:
     """Return the HTML page used to display container logs."""
+    refresh_ms = refresh_seconds * 1000
+    refresh_label = f"auto-refresh {refresh_seconds}s"
+    safe_title = escape(title)
+    safe_name = escape(name)
     return dedent(
         f"""
         <html>
         <head>
           <meta charset="utf-8"/>
-          <title>Logs - {name}</title>
+          <title>{safe_title} · Logs · {safe_name}</title>
+          <link rel="icon" href="{FAVICON_DATA_URI}">
           <style>
             body {{ background:#0d1117; color:#c9d1d9; font-family: monospace; margin:0; }}
             header {{ padding:12px 16px; border-bottom:1px solid #222; }}
@@ -32,18 +40,18 @@ def render_logs_page(name: str, tail: int) -> str:
         <body>
           <header>
             <div class="bar">
-              <strong>🧩 Logs: {name}</strong>
-              <span class="muted">auto-refresh 5s</span>
+              <strong>🧩 {safe_title} · Logs: {safe_name}</strong>
+              <span class="muted">{refresh_label}</span>
               <form id="tailForm" onsubmit="return false" class="bar">
                 <label>tail</label>
-                <input id="tail" type="number" min="1" max="5000" value="{tail}"/>
-                <button onclick="applyTail()">aplicar</button>
+                <input id="tail" type="number" min="1" max="{max_tail}" value="{tail}"/>
+                <button onclick="applyTail()">apply</button>
               </form>
-              <a href="/" target="_blank">voltar ao dashboard</a>
+              <a href="/" target="_blank">back to dashboard</a>
             </div>
           </header>
-          <pre id="logbox">carregando...</pre>
-          <div id="toast">Copiado!</div>
+          <pre id="logbox">loading...</pre>
+          <div id="toast">Copied!</div>
 
           <script>
             const name_ = {name!r};
@@ -67,11 +75,11 @@ def render_logs_page(name: str, tail: int) -> str:
 
             function applyTail() {{
               loadLogs();
-              toast('Tail aplicado');
+              toast('Tail applied');
             }}
 
             loadLogs();
-            setInterval(loadLogs, 5000);
+            setInterval(loadLogs, {refresh_ms});
           </script>
         </body>
         </html>
