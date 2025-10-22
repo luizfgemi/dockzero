@@ -1,0 +1,28 @@
+common:
+  back_to_dashboard: volver al panel
+  copied: ¡Copiado!
+dashboard:
+  auto_refresh: 'Actualización automática cada {seconds} s'
+  loading: 'Cargando contenedores...'
+  no_containers: 'Sin contenedores.'
+  no_ports: 'sin puertos expuestos'
+  metrics: 'CPU: {cpu}% &nbsp;|&nbsp; Mem: {mem} MB'
+  status_running: '🟢'
+  status_stopped: '🔴'
+  button_logs: 'registros'
+  button_terminal: 'terminal'
+  button_restart: 'reiniciar'
+  button_stop: 'detener'
+  button_start: 'iniciar'
+  toast_action_success: '✅ {name}: comando {action} enviado'
+  toast_action_error: '❌ {name}: error al ejecutar {action}'
+  toast_load_error: 'Error al cargar contenedores'
+logs:
+  refresh_hint: 'actualización automática {seconds}s'
+  tail_label: 'líneas'
+  apply_button: 'aplicar'
+  loading: 'cargando...'
+  toast_tail_applied: 'Filtro aplicado'
+terminal:
+  instructions: Elige el comando que corresponda a tu entorno y ejecútalo localmente.
+  copy_button: 'Copiar comando'

@@ -47,7 +47,7 @@ You can override the defaults below by exporting the variables before launching 
 | `LINK_SCHEME`          | `http`             | Scheme used to build external links for mapped ports.                 |
 | `LINK_HOST`            | `localhost`        | Host used when building external links.                               |
 | `APP_TITLE`            | `Docker Dashboard` | Title displayed on the web UI and HTML metadata.                      |
-| `APP_LOCALE`           | `en`               | Locale used for UI text (only `en` supported currently).              |
+| `APP_LOCALE`           | `en`               | Locale used for UI text (`en`, `pt`, or `es`).                         |
 | `AUTO_REFRESH_SECONDS` | `10`               | Polling interval for the dashboard list.                              |
 | `LOG_REFRESH_SECONDS`  | `5`                | Polling interval for the logs page.                                   |
 | `LOG_DEFAULT_TAIL`     | `200`              | Default number of log lines returned.                                 |
