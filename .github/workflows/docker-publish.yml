@@ -1,24 +1,30 @@
-name: Publish to Docker Hub
+name: Publish Docker Hub
 
 on:
   push:
     branches:
       - main
-    tags:
-      - 'v*'
   workflow_dispatch:
 
 jobs:
-  build-and-push:
+  build-release-push:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: read
+      contents: write
       packages: write
 
     steps:
-      - name: Checkout source
+      - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Determine new version
+        id: tag_version
+        uses: mathieudutour/github-tag-action@v6.1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          default_bump: patch
+          release_branches: main
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -29,18 +35,35 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and Push
+      - name: Build and Push image to Docker Hub
         uses: docker/build-push-action@v6
         with:
-          context: ./app
-          file: ./app/Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
             luizfgemi/dockzero:latest
-            luizfgemi/dockzero:${{ github.ref_type == 'tag' && github.ref_name || 'main' }}
+            luizfgemi/dockzero:${{ steps.tag_version.outputs.new_tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Verify image
-        run: docker buildx imagetools inspect luizfgemi/dockzero:latest
+      - name: Generate changelog
+        id: changelog
+        run: |
+          echo "CHANGELOG<<EOF" >> $GITHUB_ENV
+          git log $(git describe --tags --abbrev=0 2>/dev/null)..HEAD --pretty=format:"- %s" >> $GITHUB_ENV || echo "Initial release" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag_version.outputs.new_tag }}
+          name: Dockzero ${{ steps.tag_version.outputs.new_tag }}
+          body: |
+            Dockzero ${{ steps.tag_version.outputs.new_tag }}
+
+            Minimal Docker dashboard — zero config, plug-and-play.
+
+            Changes:
+            ${{ env.CHANGELOG }}
+
+            Docker Hub: https://hub.docker.com/r/luizfgemi/dockzero

@@ -2,6 +2,12 @@
 
 FastAPI application for inspecting local Docker containers, viewing simple metrics, and triggering start, stop, and restart actions from the browser.
 
+[![Build and Publish](https://github.com/luizfgemi/dockzero/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/luizfgemi/dockzero/actions/workflows/docker-publish.yml)
+[![Docker Image Version](https://img.shields.io/docker/v/luizfgemi/dockzero?sort=semver&logo=docker)](https://hub.docker.com/r/luizfgemi/dockzero)
+[![Docker Image Size](https://img.shields.io/docker/image-size/luizfgemi/dockzero/latest?logo=docker)](https://hub.docker.com/r/luizfgemi/dockzero)
+[![Docker Pulls](https://img.shields.io/docker/pulls/luizfgemi/dockzero?logo=docker)](https://hub.docker.com/r/luizfgemi/dockzero)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 ## Run
 
 ```bash
