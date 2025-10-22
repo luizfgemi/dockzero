@@ -1,4 +1,4 @@
-name: 🐳 Publish Dockzero to Docker Hub
+name: Publish to Docker Hub
 
 on:
   push:
