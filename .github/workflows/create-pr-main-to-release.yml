@@ -1,4 +1,4 @@
-name: Create PR from main → release (manual)
+name: Release
 
 on:
   workflow_dispatch:
