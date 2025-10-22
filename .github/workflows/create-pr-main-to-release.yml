@@ -3,6 +3,10 @@ name: Release
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write        # necessário para push da branch temporária
+  pull-requests: write   # necessário para abrir/atualizar PR
+
 jobs:
   create-pr:
     runs-on: ubuntu-latest
@@ -16,12 +20,25 @@ jobs:
       - name: Fetch all branches
         run: git fetch origin main release
 
+      - name: Compute diff count (main vs release)
+        id: diff
+        run: |
+          COUNT=$(git rev-list --right-only --count origin/release...origin/main)
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "Commits ahead of release: $COUNT"
+
+      - name: Stop if there is nothing to merge
+        if: ${{ steps.diff.outputs.count == '0' }}
+        run: |
+          echo "No new commits in main compared to release. Skipping PR."
+          exit 0
+
       - name: Generate changelog between main and release
         id: changelog
         run: |
           echo "## Changes from main to release" > body.md
           echo "" >> body.md
-          git log origin/release..origin/main --pretty=format:"- %s (%an)" >> body.md || echo "No new commits." >> body.md
+          git log origin/release..origin/main --pretty=format:"- %s (%an)" >> body.md
           echo "" >> body.md
           cat body.md
 
@@ -35,3 +52,4 @@ jobs:
           body-path: body.md
           labels: automated, sync
           draft: false
+          delete-branch: true   # apaga a branch temporária após merge (opcional)

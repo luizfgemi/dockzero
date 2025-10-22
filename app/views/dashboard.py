@@ -118,13 +118,11 @@ def render_dashboard(auto_refresh_seconds: int, title: str, messages: Mapping[st
               if (!c.link) return `<span class="link" style="color:#888"><em>${{DASH.no_ports}}</em></span>`;
               const logs = `/logs/${{encodeURIComponent(c.name)}}`;
               const term = `/exec/${{encodeURIComponent(c.name)}}`;
-              const inspect = `/inspect/${{encodeURIComponent(c.name)}}`;
               return `
                 <a class="link" href="${{c.link}}" target="_blank">${{c.link}}</a>
                 <span class="mini">
                   <a class="btn emoji" href="${{logs}}" target="_blank" title="${{DASH.button_logs}}">📜</a>
                   <a class="btn emoji" href="${{term}}" target="_blank" title="${{DASH.button_terminal}}">💻</a>
-                  <a class="btn emoji" href="${{inspect}}" target="_blank" title="${{DASH.button_inspect}}">ℹ️</a>
                 </span>
               `;
             }}
