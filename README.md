@@ -13,33 +13,15 @@ FastAPI application for inspecting local Docker containers, viewing simple metri
 ## Run
 
 ```bash
+docker pull luizfgemi/dockzero:latest
+
 docker run -d \
-  -p 7070:7070 \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  luizfgemi/dockzero
+-p 7070:7070 \
+-v /var/run/docker.sock:/var/run/docker.sock \
+luizfgemi/dockzero:latest
 ```
 
-or with Docker Compose (from the repository root):
-
-```bash
-docker compose up --build
-# or, for the legacy Docker Compose binary:
-# docker-compose up --build
-```
-
-The interface will be available at `http://localhost:7070`.
-To run without Docker, install dependencies from `app/requirements.txt` and start:
-
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port 7070
-```
-
----
-
-## Example docker-compose.yml
-
-Below is a minimal example using default settings, ready to copy:
-
+or with Docker Compose:
 ```yaml
 services:
   dockzero:
@@ -89,7 +71,7 @@ You can override the defaults below by exporting the variables before launching 
 ## Links
 
 * **Docker Hub:** [hub.docker.com/r/luizfgemi/dockzero](https://hub.docker.com/r/luizfgemi/dockzero)
-* **GitHub Repository:** [github.com/luizfgemi/dockzero](https://github.com/luizfgemi/dockzero)
+* **GitHub Repository:** [github.com/luizfgemi/docker-dashboard](https://github.com/luizfgemi/dockzero)
 
 ---
 
