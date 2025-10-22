@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write        # necessário para push da branch temporária
-  pull-requests: write   # necessário para abrir/atualizar PR
+  contents: write
+  pull-requests: write
 
 jobs:
   create-pr:
@@ -42,14 +42,30 @@ jobs:
           echo "" >> body.md
           cat body.md
 
-      - name: Create Pull Request (main to release)
-        uses: peter-evans/create-pull-request@v6
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          base: release
-          branch: sync-main-to-release
-          title: "Merge main to release"
-          body-path: body.md
-          labels: automated, sync
-          draft: false
-          delete-branch: true   # apaga a branch temporária após merge (opcional)
+      - name: Push sync branch (main -> release)
+        run: |
+          git checkout main
+          git reset --hard origin/main
+          git checkout -B sync-main-to-release
+          git push origin sync-main-to-release --force
+
+      - name: Create or update Pull Request (main to release)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=$(gh pr list --base release --head sync-main-to-release --state open --json number --jq '.[0].number')
+          if [ -z "$PR_NUMBER" ]; then
+            gh pr create \
+              --base release \
+              --head sync-main-to-release \
+              --title "Merge main to release" \
+              --body-file body.md \
+              --label automated \
+              --label sync
+          else
+            gh pr edit "$PR_NUMBER" \
+              --title "Merge main to release" \
+              --body-file body.md \
+              --add-label automated \
+              --add-label sync
+          fi
