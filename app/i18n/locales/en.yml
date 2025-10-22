@@ -25,7 +25,7 @@ logs:
   loading: 'loading...'
   toast_tail_applied: 'Tail applied'
 terminal:
-  instructions: Choose the command that matches your environment and run it locally.
+  instructions: 'Choose the command that matches your environment and run it locally.'
   copy_button: 'Copy command'
 inspect:
   auto_refresh: 'Auto-refresh every {seconds} s'

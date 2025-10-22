@@ -25,7 +25,7 @@ logs:
   loading: 'cargando...'
   toast_tail_applied: 'Filtro aplicado'
 terminal:
-  instructions: Elige el comando que corresponda a tu entorno y ejecútalo localmente.
+  instructions: 'Elige el comando que corresponda a tu entorno y ejecútalo localmente.'
   copy_button: 'Copiar comando'
 inspect:
   auto_refresh: 'Actualización automática cada {seconds} s'
