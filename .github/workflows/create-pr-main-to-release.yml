@@ -1,4 +1,4 @@
-name: Release
+name: Create PR from main → release (manual)
 
 on:
   workflow_dispatch:
@@ -13,14 +13,16 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Fetch all branches
+        run: git fetch origin main release --depth=0
+
       - name: Generate changelog between main and release
         id: changelog
         run: |
           echo "## Changes from main to release" > body.md
           echo "" >> body.md
-          git log release..main --pretty=format:"- %s (%an)" >> body.md || echo "No new commits." >> body.md
+          git log origin/release..origin/main --pretty=format:"- %s (%an)" >> body.md || echo "No new commits." >> body.md
           echo "" >> body.md
-          echo "Generated changelog between branches."
           cat body.md
 
       - name: Create Pull Request (main → release)
@@ -28,8 +30,8 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           base: release
-          branch: main
-          title: "🔄 Merge main → release"
+          head: main
+          title: "Merge main → release"
           body-path: body.md
           labels: automated, sync
           draft: false
