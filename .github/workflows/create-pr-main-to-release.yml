@@ -1,0 +1,35 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  create-pr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog between main and release
+        id: changelog
+        run: |
+          echo "## Changes from main to release" > body.md
+          echo "" >> body.md
+          git log release..main --pretty=format:"- %s (%an)" >> body.md || echo "No new commits." >> body.md
+          echo "" >> body.md
+          echo "Generated changelog between branches."
+          cat body.md
+
+      - name: Create Pull Request (main → release)
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: release
+          branch: main
+          title: "🔄 Merge main → release"
+          body-path: body.md
+          labels: automated, sync
+          draft: false
