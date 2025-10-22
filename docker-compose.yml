@@ -1,6 +1,8 @@
 services:
   docker-dashboard:
-    build: ./app
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: docker-dashboard
     ports:
       - "7070:7070"

@@ -6,13 +6,18 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # install minimal dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc curl && \
-    pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir fastapi uvicorn docker && \
-    apt-get purge -y gcc && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
+    pip install --no-cache-dir --upgrade pip
 
 # ---------- app ----------
 WORKDIR /code
-COPY . /code/app
+COPY app/requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt && \
+    rm -f /tmp/requirements.txt && \
+    apt-get purge -y gcc && \
+    apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY app /code/app
 ENV PYTHONPATH=/code
 
 WORKDIR /code/app
