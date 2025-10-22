@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import time
+from concurrent.futures import ThreadPoolExecutor
+from threading import Lock
 from typing import Any
 
 from docker import DockerClient
@@ -11,6 +13,9 @@ from docker.models.containers import Container
 from app.core.config import ACTION_DELAY_SECONDS, EXEC_SHELL, LINK_HOST, LINK_SCHEME, LOG_MAX_TAIL
 
 VALID_ACTIONS = {"start", "stop", "restart"}
+_STATS_CACHE_TTL_SECONDS = 2.0
+_STATS_CACHE: dict[str, tuple[float, dict[str, Any] | None]] = {}
+_STATS_CACHE_LOCK = Lock()
 
 
 def first_mapped_port(container: Container) -> str | None:
@@ -57,24 +62,77 @@ def calc_mem_mb(stats: dict[str, Any]) -> float | None:
         return None
 
 
+def _get_cached_stats(container_id: str) -> dict[str, Any] | None:
+    """Return cached stats if they are still within the TTL window."""
+    now = time.monotonic()
+    with _STATS_CACHE_LOCK:
+        cached = _STATS_CACHE.get(container_id)
+        if not cached:
+            return None
+        ts, data = cached
+        if now - ts <= _STATS_CACHE_TTL_SECONDS:
+            return data
+        _STATS_CACHE.pop(container_id, None)
+        return None
+
+
+def _set_cached_stats(container_id: str, stats: dict[str, Any] | None) -> None:
+    """Store stats in the cache."""
+    with _STATS_CACHE_LOCK:
+        _STATS_CACHE[container_id] = (time.monotonic(), stats)
+
+
+def _collect_stats(containers: list[Container]) -> dict[str, dict[str, Any] | None]:
+    """Return a mapping of container id -> stats using caching and parallel calls."""
+    stats_map: dict[str, dict[str, Any] | None] = {}
+    to_fetch: list[Container] = []
+
+    for container in containers:
+        if container.status != "running":
+            stats_map[container.id] = None
+            continue
+
+        cached = _get_cached_stats(container.id)
+        if cached is not None:
+            stats_map[container.id] = cached
+        else:
+            to_fetch.append(container)
+
+    if not to_fetch:
+        return stats_map
+
+    max_workers = min(4, len(to_fetch))
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(_fetch_stats, container): container.id for container in to_fetch}
+        for future, container_id in futures.items():
+            stats = future.result()
+            _set_cached_stats(container_id, stats)
+            stats_map[container_id] = stats
+
+    return stats_map
+
+
+def _fetch_stats(container: Container) -> dict[str, Any] | None:
+    """Fetch stats for a container, returning None on failure."""
+    try:
+        return container.stats(stream=False)
+    except Exception:
+        return None
+
+
 def list_container_summaries(client: DockerClient) -> list[dict[str, Any]]:
     """Return the dashboard payload for all containers."""
     result: list[dict[str, Any]] = []
     containers = client.containers.list(all=True)
+    stats_map = _collect_stats(containers)
+
     for container in containers:
         host_port = first_mapped_port(container)
         link = f"{LINK_SCHEME}://{LINK_HOST}:{host_port}" if host_port else None
 
-        cpu = None
-        mem = None
-        try:
-            stats = container.stats(stream=False)
-        except Exception:
-            stats = None
-
-        if stats:
-            cpu = calc_cpu_percent(stats)
-            mem = calc_mem_mb(stats)
+        stats = stats_map.get(container.id)
+        cpu = calc_cpu_percent(stats) if stats else None
+        mem = calc_mem_mb(stats) if stats else None
 
         result.append(
             {
