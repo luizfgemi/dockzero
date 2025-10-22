@@ -119,47 +119,135 @@ def render_dashboard(auto_refresh_seconds: int, title: str, messages: Mapping[st
               `;
             }}
 
+            function updateMetrics(metrics) {{
+              Object.keys(metrics).forEach(name => {{
+                const encoded = encodeURIComponent(name);
+                const card = document.querySelector(`.card[data-container=\"${{encoded}}\"]`);
+                if (!card) return;
+                const meta = card.querySelector('.meta');
+                if (!meta) return;
+                const entry = metrics[name] || {{}};
+                const cpu = fmt(entry.cpu, 1);
+                const mem = fmt(entry.mem_mb, 0);
+                meta.innerHTML = format(DASH.metrics, {{cpu, mem}});
+              }});
+            }}
+
+            async function fetchMetrics(names) {{
+              if (!names.length) return;
+              const query = names.map(n => `names=${{encodeURIComponent(n)}}`).join('&');
+              try {{
+                const metrics = await api(`/containers/metrics?${{query}}`);
+                updateMetrics(metrics);
+              }} catch (e) {{
+                console.warn('Failed to load metrics', e);
+              }}
+            }}
+
+            function renderCard(container) {{
+              const statusCls = container.status === 'running' ? 'running' : 'stopped';
+              const statusIcon = container.status === 'running' ? DASH.status_running : DASH.status_stopped;
+              const linkHtml = linkHtmlFor(container);
+              const cpu = fmt(container.cpu, 1);
+              const mem = fmt(container.mem_mb, 0);
+              const metrics = format(DASH.metrics, {{cpu, mem}});
+              const encoded = encodeURIComponent(container.name);
+
+              return `
+                <div class="card" data-container="${{encoded}}">
+                  <div class="status ${{statusCls}}">${{statusIcon}}</div>
+                  <div class="grow">
+                    <div class="name">${{container.name}}</div>
+                    <div class="meta">${{metrics}}</div>
+                  </div>
+                  <div class="grow row">
+                    ${{linkHtml}}
+                  </div>
+                  <div class="actions">
+                    <button class="btn" title="${{DASH.button_restart}}" onclick="doAction('${{container.name}}','restart')">🔄</button>
+                    <button class="btn" title="${{DASH.button_stop}}" ${{container.status==='running'?'':'disabled'}} onclick="doAction('${{container.name}}','stop')">⏹</button>
+                    <button class="btn" title="${{DASH.button_start}}" ${{container.status!=='running'?'':'disabled'}} onclick="doAction('${{container.name}}','start')">▶️</button>
+                  </div>
+                </div>
+              `;
+            }}
+
+            function applyUpdate(containers) {{
+              const div = document.getElementById('content');
+              const existingCards = new Map([...div.querySelectorAll('.card')].map(card => [decodeURIComponent(card.dataset.container || ''), card]));
+
+              containers.forEach(container => {{
+                const name = container.name;
+                const encoded = encodeURIComponent(name);
+                let card = existingCards.get(name);
+
+                if (!card) {{
+                  const temp = document.createElement('div');
+                  temp.innerHTML = renderCard(container);
+                  card = temp.firstElementChild;
+                  div.appendChild(card);
+                }} else {{
+                  existingCards.delete(name);
+                  const statusCls = container.status === 'running' ? 'running' : 'stopped';
+                  const statusIcon = container.status === 'running' ? DASH.status_running : DASH.status_stopped;
+                  card.querySelector('.status').innerHTML = statusIcon;
+                  card.querySelector('.status').className = `status ${{statusCls}}`;
+                  const nameEl = card.querySelector('.name');
+                  if (nameEl) nameEl.textContent = name;
+
+                  const linkWrap = card.querySelector('.grow.row');
+                  if (linkWrap) linkWrap.innerHTML = linkHtmlFor(container);
+
+                  const meta = card.querySelector('.meta');
+                  if (meta && (container.cpu != null || container.mem_mb != null)) {{
+                    const cpu = fmt(container.cpu, 1);
+                    const mem = fmt(container.mem_mb, 0);
+                    meta.innerHTML = format(DASH.metrics, {{cpu, mem}});
+                  }}
+
+                  const [restartBtn, stopBtn, startBtn] = card.querySelectorAll('.actions .btn');
+                  if (restartBtn) restartBtn.setAttribute('onclick', `doAction('${{name}}','restart')`);
+                  if (stopBtn) {{
+                    stopBtn.toggleAttribute('disabled', container.status !== 'running');
+                    stopBtn.setAttribute('onclick', `doAction('${{name}}','stop')`);
+                  }}
+                  if (startBtn) {{
+                    startBtn.toggleAttribute('disabled', container.status === 'running');
+                    startBtn.setAttribute('onclick', `doAction('${{name}}','start')`);
+                  }}
+                }}
+              }});
+
+              existingCards.forEach(card => {{
+                card.remove();
+              }});
+            }}
+
             async function loadContainers() {{
               try {{
-                const data = await api('/containers');
+                const data = await api('/containers?include_metrics=0');
                 const div = document.getElementById('content');
                 if (!data.length) {{
                   div.innerHTML = `<p style="text-align:center;">${{DASH.no_containers}}</p>`;
                   return;
                 }}
-                div.innerHTML = data.map(c => {{
-                  const statusCls = c.status === 'running' ? 'running' : 'stopped';
-                  const statusIcon = c.status === 'running' ? DASH.status_running : DASH.status_stopped;
-                  const linkHtml = linkHtmlFor(c);
-                  const cpu = fmt(c.cpu, 1);
-                  const mem = fmt(c.mem_mb, 0);
-                  const metrics = format(DASH.metrics, {{cpu, mem}});
-
-                  return `
-                    <div class="card">
-                      <div class="status ${{statusCls}}">${{statusIcon}}</div>
-                      <div class="grow">
-                        <div class="name">${{c.name}}</div>
-                        <div class="meta">${{metrics}}</div>
-                      </div>
-                      <div class="grow row">
-                        ${{linkHtml}}
-                      </div>
-                      <div class="actions">
-                        <button class="btn" title="${{DASH.button_restart}}" onclick="doAction('${{c.name}}','restart')">🔄</button>
-                        <button class="btn" title="${{DASH.button_stop}}" ${{c.status==='running'?'':'disabled'}} onclick="doAction('${{c.name}}','stop')">⏹</button>
-                        <button class="btn" title="${{DASH.button_start}}" ${{c.status!=='running'?'':'disabled'}} onclick="doAction('${{c.name}}','start')">▶️</button>
-                      </div>
-                    </div>
-                  `;
-                }}).join('');
+                if (!div.dataset.initialized) {{
+                  div.innerHTML = data.map(renderCard).join('');
+                  div.dataset.initialized = '1';
+                }} else {{
+                  applyUpdate(data);
+                }}
+                const names = data.map(c => c.name);
+                fetchMetrics(names);
               }} catch (e) {{
                 toast(DASH.toast_load_error);
               }}
             }}
 
             loadContainers();
-            setInterval(loadContainers, {refresh_ms});
+            setInterval(() => {{
+              loadContainers().catch(() => {{ /* handled in loadContainers */ }});
+            }}, {refresh_ms});
           </script>
         </body>
         </html>

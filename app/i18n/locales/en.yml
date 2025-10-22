@@ -2,27 +2,28 @@ common:
   back_to_dashboard: back to dashboard
   copied: Copied!
 dashboard:
-  auto_refresh: "Auto-refresh every {seconds} s"
-  loading: Loading containers...
-  no_containers: No containers.
-  no_ports: no exposed ports
-  metrics: "CPU: {cpu}% &nbsp;|&nbsp; Mem: {mem} MB"
-  status_running: "🟢"
-  status_stopped: "🔴"
-  button_logs: logs
-  button_terminal: terminal
-  button_restart: restart
-  button_stop: stop
-  button_start: start
-  toast_action_success: "✅ {name}: {action} sent"
-  toast_action_error: "❌ {name}: failed to {action}"
-  toast_load_error: Error loading containers
+  auto_refresh: 'Auto-refresh every {seconds} s'
+  loading: 'Loading containers...'
+  no_containers: 'No containers.'
+  no_ports: 'no exposed ports'
+  metrics: 'CPU: {cpu}% &nbsp;|&nbsp; Mem: {mem} MB'
+  status_running: '🟢'
+  status_stopped: '🔴'
+  button_logs: 'logs'
+  button_terminal: 'terminal'
+  button_restart: 'restart'
+  button_stop: 'stop'
+  button_start: 'start'
+  toast_action_success: '✅ {name}: {action} sent'
+  toast_action_error: '❌ {name}: failed to {action}'
+  toast_load_error: 'Error loading containers'
 logs:
-  refresh_hint: "auto-refresh {seconds}s"
-  tail_label: tail
-  apply_button: apply
-  loading: loading...
-  toast_tail_applied: Tail applied
+  refresh_hint: 'auto-refresh {seconds}s'
+  tail_label: 'tail'
+  apply_button: 'apply'
+  loading: 'loading...'
+  toast_tail_applied: 'Tail applied'
 terminal:
-  instructions: "Copy and paste this command into PowerShell/Windows Terminal:"
-  copy_button: "📋 Copy command"
+  instructions: >
+    Copy and paste this command into PowerShell/Windows Terminal:
+  copy_button: 'Copy command'

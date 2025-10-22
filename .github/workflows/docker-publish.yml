@@ -84,9 +84,19 @@ jobs:
       - name: Generate changelog
         id: changelog
         run: |
-          echo "CHANGELOG<<EOF" >> $GITHUB_ENV
-          git log $(git describe --tags --abbrev=0 2>/dev/null)..HEAD --pretty=format:"- %s" >> $GITHUB_ENV || echo "Initial release" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          prev_tag="${{ steps.tag_version.outputs.previous_tag }}"
+          echo "CHANGELOG<<EOF" >> "$GITHUB_ENV"
+          if [ -n "$prev_tag" ]; then
+            log=$(git log "${prev_tag}..HEAD" --pretty=format:"- %s")
+            if [ -n "$log" ]; then
+              printf '%s\n' "$log" >> "$GITHUB_ENV"
+            else
+              echo "No changes since ${prev_tag}" >> "$GITHUB_ENV"
+            fi
+          else
+            echo "Initial release" >> "$GITHUB_ENV"
+          fi
+          echo "EOF" >> "$GITHUB_ENV"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

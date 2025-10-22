@@ -18,14 +18,14 @@ _STATS_CACHE: dict[str, tuple[float, dict[str, Any] | None]] = {}
 _STATS_CACHE_LOCK = Lock()
 
 
-def first_mapped_port(container: Container) -> str | None:
-    """Return the first mapped host port for a container, if any."""
-    ports = (container.attrs.get("NetworkSettings", {}) or {}).get("Ports", {}) or {}
-    for mappings in ports.values():
-        if mappings:
-            host_port = mappings[0].get("HostPort")
-            if host_port:
-                return host_port
+def first_mapped_port_from_summary(port_mappings: list[dict[str, Any]] | None) -> str | None:
+    """Return the first mapped host port from a container summary entry."""
+    if not port_mappings:
+        return None
+    for mapping in port_mappings:
+        host_port = mapping.get("PublicPort")
+        if host_port:
+            return str(host_port)
     return None
 
 
@@ -120,30 +120,76 @@ def _fetch_stats(container: Container) -> dict[str, Any] | None:
         return None
 
 
-def list_container_summaries(client: DockerClient) -> list[dict[str, Any]]:
+def _status_from_summary(summary: dict[str, Any]) -> str:
+    """Normalize the container state string from a Docker summary."""
+    state = (summary.get("State") or "").lower()
+    if not state:
+        status = (summary.get("Status") or "").lower()
+        if status.startswith("up"):
+            return "running"
+        if status.startswith("exited") or status.startswith("created"):
+            return "stopped"
+        return status or "unknown"
+    return state
+
+
+def list_container_summaries(client: DockerClient, *, include_metrics: bool = True) -> list[dict[str, Any]]:
     """Return the dashboard payload for all containers."""
-    result: list[dict[str, Any]] = []
-    containers = client.containers.list(all=True)
-    stats_map = _collect_stats(containers)
+    summaries = client.api.containers(all=True)
 
-    for container in containers:
-        host_port = first_mapped_port(container)
-        link = f"{LINK_SCHEME}://{LINK_HOST}:{host_port}" if host_port else None
-
-        stats = stats_map.get(container.id)
-        cpu = calc_cpu_percent(stats) if stats else None
-        mem = calc_mem_mb(stats) if stats else None
-
-        result.append(
-            {
-                "name": container.name,
-                "status": container.status,
-                "link": link,
+    metrics_by_name: dict[str, dict[str, float | None]] = {}
+    if include_metrics:
+        container_objs = [client.containers.get(summary["Id"]) for summary in summaries]
+        stats_map = _collect_stats(container_objs)
+        for container in container_objs:
+            stats = stats_map.get(container.id)
+            cpu = calc_cpu_percent(stats) if stats else None
+            mem = calc_mem_mb(stats) if stats else None
+            metrics_by_name[container.name] = {
                 "cpu": round(cpu, 1) if cpu is not None else None,
                 "mem_mb": round(mem, 0) if mem is not None else None,
             }
+
+    result: list[dict[str, Any]] = []
+    for summary in summaries:
+        raw_name = (summary.get("Names") or [""])[0]
+        name = raw_name.lstrip("/") if raw_name else summary.get("Id", "")[:12]
+        host_port = first_mapped_port_from_summary(summary.get("Ports"))
+        link = f"{LINK_SCHEME}://{LINK_HOST}:{host_port}" if host_port else None
+        status = _status_from_summary(summary)
+        metrics = metrics_by_name.get(name, {"cpu": None, "mem_mb": None})
+
+        result.append(
+            {
+                "name": name,
+                "status": status,
+                "link": link,
+                "cpu": metrics["cpu"],
+                "mem_mb": metrics["mem_mb"],
+            }
         )
     return result
+
+
+def get_containers_metrics(client: DockerClient, names: list[str] | None = None) -> dict[str, dict[str, float | None]]:
+    """Return CPU and memory metrics for the requested containers."""
+    containers = client.containers.list(all=True)
+    if names:
+        requested = {name: None for name in names}
+        containers = [c for c in containers if c.name in requested]
+    stats_map = _collect_stats(containers)
+
+    metrics: dict[str, dict[str, float | None]] = {}
+    for container in containers:
+        stats = stats_map.get(container.id)
+        cpu = calc_cpu_percent(stats) if stats else None
+        mem = calc_mem_mb(stats) if stats else None
+        metrics[container.name] = {
+            "cpu": round(cpu, 1) if cpu is not None else None,
+            "mem_mb": round(mem, 0) if mem is not None else None,
+        }
+
+    return metrics
 
 
 def perform_container_action(client: DockerClient, name: str, action: str) -> None:
