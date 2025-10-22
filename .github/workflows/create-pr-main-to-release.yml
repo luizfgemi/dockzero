@@ -14,7 +14,7 @@ jobs:
           fetch-depth: 0
 
       - name: Fetch all branches
-        run: git fetch origin main release --depth=0
+        run: git fetch origin main release
 
       - name: Generate changelog between main and release
         id: changelog
@@ -25,13 +25,13 @@ jobs:
           echo "" >> body.md
           cat body.md
 
-      - name: Create Pull Request (main → release)
+      - name: Create Pull Request (main to release)
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           base: release
-          head: main
-          title: "Merge main → release"
+          branch: sync-main-to-release
+          title: "Merge main to release"
           body-path: body.md
           labels: automated, sync
           draft: false
