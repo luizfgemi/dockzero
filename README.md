@@ -4,7 +4,6 @@ FastAPI application for inspecting local Docker containers, viewing simple metri
 
 [![Build and Publish](https://github.com/luizfgemi/dockzero/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/luizfgemi/dockzero/actions/workflows/docker-publish.yml)
 [![Docker latest](https://img.shields.io/docker/v/luizfgemi/dockzero/latest?logo=docker&label=latest)](https://hub.docker.com/r/luizfgemi/dockzero/tags?name=latest)
-[![Docker develop](https://img.shields.io/docker/v/luizfgemi/dockzero/develop?logo=docker&label=develop)](https://hub.docker.com/r/luizfgemi/dockzero/tags?name=develop)
 [![Size](https://img.shields.io/docker/image-size/luizfgemi/dockzero/latest?logo=docker&label=size)](https://hub.docker.com/r/luizfgemi/dockzero/tags?name=latest)
 [![Docker Pulls](https://img.shields.io/docker/pulls/luizfgemi/dockzero?logo=docker)](https://hub.docker.com/r/luizfgemi/dockzero)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
