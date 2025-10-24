@@ -16,6 +16,8 @@ def render_logs_page(
     max_tail: int,
     title: str,
     messages: Mapping[str, Any],
+    *,
+    base_path: str = "",
 ) -> str:
     """Return the HTML page used to display container logs."""
     refresh_ms = refresh_seconds * 1000
@@ -31,6 +33,11 @@ def render_logs_page(
     copied_text = escape(common_messages["copied"])
     toast_tail_applied = json.dumps(logs_messages["toast_tail_applied"])
     toast_default = json.dumps(common_messages["copied"])
+    normalized_base = base_path.strip() if base_path else ""
+    if normalized_base and not normalized_base.startswith("/"):
+        normalized_base = f"/{normalized_base.lstrip('/')}"
+    if normalized_base == "/":
+        normalized_base = ""
     return dedent(
         f"""
         <html>
@@ -65,7 +72,7 @@ def render_logs_page(
                 <input id="tail" type="number" min="1" max="{max_tail}" value="{tail}"/>
                 <button onclick="applyTail()">{apply_button}</button>
               </form>
-              <a href="/" target="_blank">{back_text}</a>
+              <a href="{normalized_base or '/'}" target="_blank">{back_text}</a>
             </div>
           </header>
           <pre id="logbox">{loading_text}</pre>
@@ -75,6 +82,7 @@ def render_logs_page(
             const name_ = {name!r};
             const TOAST_TAIL_APPLIED = {toast_tail_applied};
             const TOAST_DEFAULT = {toast_default};
+            const BASE_PATH = "{normalized_base}";
 
             function toast(msg) {{
               const t = document.getElementById('toast');
@@ -86,7 +94,7 @@ def render_logs_page(
 
             async function loadLogs() {{
               const tail = document.getElementById('tail').value || {tail};
-              const res = await fetch(`/logs_raw/${{encodeURIComponent(name_)}}?tail=${{tail}}`);
+              const res = await fetch(`${{BASE_PATH}}/logs_raw/${{encodeURIComponent(name_)}}?tail=${{tail}}`);
               const txt = await res.text();
               const box = document.getElementById('logbox');
               const atBottom = (window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 4);

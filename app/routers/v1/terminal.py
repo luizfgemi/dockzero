@@ -1,4 +1,4 @@
-"""Routes related to opening containers in a terminal."""
+"""Routes related to opening containers in a terminal (v1)."""
 from __future__ import annotations
 
 from fastapi import APIRouter
@@ -17,4 +17,15 @@ MESSAGES = get_messages(APP_LOCALE)
 def open_in_terminal(name: str) -> HTMLResponse:
     """Render the helper page with the docker exec command."""
     commands = build_exec_commands(name)
-    return HTMLResponse(render_terminal_page(name, commands, APP_TITLE, MESSAGES))
+    return HTMLResponse(
+        render_terminal_page(
+            name,
+            commands,
+            APP_TITLE,
+            MESSAGES,
+            base_path="/v1",
+        )
+    )
+
+
+__all__ = ["router"]

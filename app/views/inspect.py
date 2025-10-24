@@ -15,6 +15,8 @@ def render_inspect_page(
     refresh_seconds: int,
     title: str,
     messages: Mapping[str, Any],
+    *,
+    base_path: str = "",
 ) -> str:
     """Return the HTML page that displays detailed container information."""
     refresh_ms = refresh_seconds * 1000
@@ -25,6 +27,11 @@ def render_inspect_page(
 
     initial_json = json.dumps(data.get("inspect", {}), indent=2, sort_keys=True, ensure_ascii=False)
     stats_json = json.dumps(data.get("stats", {}), indent=2, sort_keys=True, ensure_ascii=False)
+    normalized_base = base_path.strip() if base_path else ""
+    if normalized_base and not normalized_base.startswith("/"):
+        normalized_base = f"/{normalized_base.lstrip('/')}"
+    if normalized_base == "/":
+        normalized_base = ""
 
     return dedent(
         f"""
@@ -54,7 +61,7 @@ def render_inspect_page(
               <div class="muted">{inspect_messages["auto_refresh"].format(seconds=refresh_seconds)}</div>
             </div>
             <div>
-              <a href="/" target="_blank">{common_messages["back_to_dashboard"]}</a>
+              <a href="{normalized_base or '/'}" target="_blank">{common_messages["back_to_dashboard"]}</a>
             </div>
           </header>
           <section class="split">
@@ -70,7 +77,8 @@ def render_inspect_page(
 
           <script>
             const REFRESH_MS = {refresh_ms};
-            const ENDPOINT = "/inspect_raw/{escape(name)}";
+            const BASE_PATH = "{normalized_base}";
+            const ENDPOINT = `${{BASE_PATH}}/inspect_raw/{escape(name)}`;
 
             async function loadInspect() {{
               try {{

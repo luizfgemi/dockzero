@@ -1,4 +1,4 @@
-"""Routes for viewing detailed container information."""
+"""Routes for viewing detailed container information (v1)."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -26,7 +26,14 @@ def inspect_container(
         data = get_container_inspect(client, name)
     except NotFound as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    html = render_inspect_page(name, data, AUTO_REFRESH_SECONDS, APP_TITLE, MESSAGES)
+    html = render_inspect_page(
+        name,
+        data,
+        AUTO_REFRESH_SECONDS,
+        APP_TITLE,
+        MESSAGES,
+        base_path="/v1",
+    )
     return HTMLResponse(html)
 
 
