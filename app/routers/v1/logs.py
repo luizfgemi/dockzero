@@ -1,4 +1,4 @@
-"""Routes for viewing container logs."""
+"""Routes for viewing container logs (v1)."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
@@ -21,7 +21,17 @@ def container_logs(
     tail: int = Query(default=LOG_DEFAULT_TAIL, ge=1, le=LOG_MAX_TAIL),
 ) -> HTMLResponse:
     """Return the HTML page that auto-refreshes container logs."""
-    return HTMLResponse(render_logs_page(name, tail, LOG_REFRESH_SECONDS, LOG_MAX_TAIL, APP_TITLE, MESSAGES))
+    return HTMLResponse(
+        render_logs_page(
+            name,
+            tail,
+            LOG_REFRESH_SECONDS,
+            LOG_MAX_TAIL,
+            APP_TITLE,
+            MESSAGES,
+            base_path="/v1",
+        )
+    )
 
 
 @router.get("/logs_raw/{name}", response_class=PlainTextResponse)
@@ -33,3 +43,6 @@ def container_logs_raw(
     """Return the textual logs used by the HTML view."""
     logs = get_container_logs(client, name, tail)
     return PlainTextResponse(logs)
+
+
+__all__ = ["router"]

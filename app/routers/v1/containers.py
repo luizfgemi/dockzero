@@ -1,4 +1,4 @@
-"""Routes that expose container data and actions."""
+"""Routes that expose container data and actions (v1)."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -50,3 +50,6 @@ def container_action(
     except NotFound as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return JSONResponse({"ok": True})
+
+
+__all__ = ["router"]

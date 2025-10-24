@@ -9,7 +9,13 @@ from typing import Any, Mapping
 from app.views.assets import FAVICON_DATA_URI
 
 
-def render_dashboard(auto_refresh_seconds: int, title: str, messages: Mapping[str, Any]) -> str:
+def render_dashboard(
+    auto_refresh_seconds: int,
+    title: str,
+    messages: Mapping[str, Any],
+    *,
+    base_path: str = "",
+) -> str:
     """Return the HTML contents for the dashboard page."""
     refresh_ms = auto_refresh_seconds * 1000
     safe_title = escape(title)
@@ -17,6 +23,11 @@ def render_dashboard(auto_refresh_seconds: int, title: str, messages: Mapping[st
     footer_hint = escape(dashboard_messages["auto_refresh"].format(seconds=auto_refresh_seconds))
     loading_text = escape(dashboard_messages["loading"])
     messages_json = json.dumps(messages, ensure_ascii=False)
+    normalized_base = base_path.strip() if base_path else ""
+    if normalized_base and not normalized_base.startswith("/"):
+        normalized_base = f"/{normalized_base.lstrip('/')}"
+    if normalized_base == "/":
+        normalized_base = ""
     return dedent(
         f"""
         <html>
@@ -79,6 +90,7 @@ def render_dashboard(auto_refresh_seconds: int, title: str, messages: Mapping[st
           <script>
             const I18N = {messages_json};
             const DASH = I18N.dashboard;
+            const BASE_PATH = "{normalized_base}";
 
             function format(msg, vars) {{
               return msg.replace(/\\{{(\\w+)\\}}/g, (_, key) => {{
@@ -96,7 +108,7 @@ def render_dashboard(auto_refresh_seconds: int, title: str, messages: Mapping[st
             }}
 
             async function api(url, opts) {{
-              const res = await fetch(url, opts);
+              const res = await fetch(`${{BASE_PATH}}${{url}}`, opts);
               if (!res.ok) throw new Error(await res.text());
               return res.json ? res.json() : res.text();
             }}
@@ -116,9 +128,9 @@ def render_dashboard(auto_refresh_seconds: int, title: str, messages: Mapping[st
 
             function linkHtmlFor(c) {{
               if (!c.link) return `<span class="link" style="color:#888"><em>${{DASH.no_ports}}</em></span>`;
-              const logs = `/logs/${{encodeURIComponent(c.name)}}`;
-              const term = `/exec/${{encodeURIComponent(c.name)}}`;
-              const inspect = `/inspect/${{encodeURIComponent(c.name)}}`;
+              const logs = `${{BASE_PATH}}/logs/${{encodeURIComponent(c.name)}}`;
+              const term = `${{BASE_PATH}}/exec/${{encodeURIComponent(c.name)}}`;
+              const inspect = `${{BASE_PATH}}/inspect/${{encodeURIComponent(c.name)}}`;
               return `
                 <a class="link" href="${{c.link}}" target="_blank">${{c.link}}</a>
                 <span class="mini">
@@ -231,7 +243,7 @@ def render_dashboard(auto_refresh_seconds: int, title: str, messages: Mapping[st
                     startBtn.setAttribute('onclick', `doAction('${{name}}','start')`);
                   }}
                   if (inspectLink) {{
-                    inspectLink.href = inspectUrl;
+                    inspectLink.href = `${{BASE_PATH}}${{inspectUrl}}`;
                     inspectLink.title = DASH.button_inspect;
                   }}
                 }}

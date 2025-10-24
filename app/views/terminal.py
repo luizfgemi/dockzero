@@ -14,6 +14,8 @@ def render_terminal_page(
     commands: Iterable[dict[str, str]],
     title: str,
     messages: Mapping[str, Any],
+    *,
+    base_path: str = "",
 ) -> str:
     """Return the HTML contents that show the exec command options."""
     safe_title = escape(title)
@@ -25,6 +27,11 @@ def render_terminal_page(
     back_text = escape(common_messages["back_to_dashboard"])
     copied_text = escape(common_messages["copied"])
     toast_message = json.dumps(common_messages["copied"])
+    normalized_base = base_path.strip() if base_path else ""
+    if normalized_base and not normalized_base.startswith("/"):
+        normalized_base = f"/{normalized_base.lstrip('/')}"
+    if normalized_base == "/":
+        normalized_base = ""
 
     cards_html: list[str] = []
     for idx, info in enumerate(commands):
@@ -71,7 +78,7 @@ def render_terminal_page(
           <div class=\"cmd-list\">
             {commands_markup}
           </div>
-          &nbsp;&nbsp; <a href=\"/\" target=\"_blank\">{back_text}</a>
+          &nbsp;&nbsp; <a href=\"{normalized_base or '/'}\" target=\"_blank\">{back_text}</a>
           <div id=\"toast\">{copied_text}</div>
           <script>
             const TOAST_MSG = {toast_message};

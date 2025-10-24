@@ -49,6 +49,14 @@ def _get_float_env(name: str, default: float, *, minimum: float | None = None) -
     return value
 
 
+def _get_bool_env(name: str, default: bool) -> bool:
+    """Return a boolean environment variable."""
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
 LINK_SCHEME: str = os.getenv("LINK_SCHEME", "http")
 """Scheme used to build external links for mapped container ports."""
 
@@ -73,6 +81,21 @@ LOG_DEFAULT_TAIL: int = min(_LOG_DEFAULT_TAIL, LOG_MAX_TAIL)
 ACTION_DELAY_SECONDS: float = _get_float_env("ACTION_DELAY_SECONDS", 0.1, minimum=0.0)
 """Sleep duration after container actions to let Docker settle."""
 
+V1_AUTH_ENABLED: bool = _get_bool_env("V1_AUTH_ENABLED", False)
+"""Enable HTTP Basic authentication for /v1 routes."""
+
+V1_AUTH_USERNAME: str | None = os.getenv("V1_AUTH_USERNAME")
+"""Username required when v1 authentication is enabled."""
+
+V1_AUTH_PASSWORD: str | None = os.getenv("V1_AUTH_PASSWORD")
+"""Password required when v1 authentication is enabled."""
+
+V1_AUTH_ALLOW_LOOPBACK: bool = _get_bool_env("V1_AUTH_ALLOW_LOOPBACK", True)
+"""Allow loopback clients to bypass authentication when enabled."""
+
+if V1_AUTH_ENABLED and (not V1_AUTH_USERNAME or not V1_AUTH_PASSWORD):
+    raise RuntimeError("V1 auth enabled but credentials not set via V1_AUTH_USERNAME/V1_AUTH_PASSWORD.")
+
 __all__ = [
     "APP_TITLE",
     "APP_LOCALE",
@@ -86,4 +109,8 @@ __all__ = [
     "ACTION_DELAY_SECONDS",
     "EXEC_SHELL",
     "EXEC_COMMAND_PROFILES",
+    "V1_AUTH_ENABLED",
+    "V1_AUTH_USERNAME",
+    "V1_AUTH_PASSWORD",
+    "V1_AUTH_ALLOW_LOOPBACK",
 ]
